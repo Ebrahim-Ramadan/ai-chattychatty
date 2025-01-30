@@ -49,13 +49,22 @@
             color: black;
         }
 
+        .code-block {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: "Courier New", monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
         #chatInputContainer {
             display: flex;
             padding: 10px;
             background-color: white;
             position: sticky;
             bottom: 0;
-            width: 100%;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
         }
 
@@ -94,7 +103,7 @@
     </div>
 
     <div id="chatInputContainer">
-        <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+        <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)" autofocus>
         <button id="sendButton" onclick="sendMessage()">Send</button>
     </div>
 
@@ -112,7 +121,7 @@
             const messages = [];
             const chatMessages = document.querySelectorAll(".message");
             chatMessages.forEach(msg => {
-                messages.push({ text: msg.textContent, sender: msg.classList.contains("user") ? "user" : "bot" });
+                messages.push({ text: msg.innerHTML, sender: msg.classList.contains("user") ? "user" : "bot" });
             });
             localStorage.setItem("chatMessages", JSON.stringify(messages));
         }
@@ -179,30 +188,70 @@
             const chatOutput = document.getElementById("chatOutput");
             const messageElement = document.createElement("div");
             messageElement.classList.add("message", sender);
-            messageElement.textContent = text;
-            chatOutput.appendChild(messageElement);
 
-            scrollToBottom();
-        }
-
-        function updateLastBotMessage(text) {
-            const chatOutput = document.getElementById("chatOutput");
-            const lastMessage = chatOutput.querySelector(".bot:last-child");
-            if (lastMessage) {
-                lastMessage.textContent = text;
+            // Check if the message contains code blocks
+            if (text.includes("```")) {
+                const parts = text.split("```");
+                parts.forEach((part, index) => {
+                    if (index % 2 === 1) {
+                        // Code block
+                        const codeElement = document.createElement("pre");
+                        codeElement.classList.add("code-block");
+                        codeElement.textContent = part;
+                        messageElement.appendChild(codeElement);
+                    } else {
+                        // Regular text
+                        messageElement.appendChild(document.createTextNode(part));
+                    }
+                });
+            } else {
+                // Regular message
+                messageElement.textContent = text;
             }
+
+            chatOutput.appendChild(messageElement);
             scrollToBottom();
         }
+
+        function  updateLastBotMessage(text) {
+    const chatOutput = document.getElementById("chatOutput");
+    const lastMessage = chatOutput.querySelector(".bot:last-child");
+    if (lastMessage) {
+        // Check if the message contains code blocks
+        if (text.includes("```")) {
+            const parts = text.split("```");
+            lastMessage.innerHTML = ""; // Clear existing content
+            parts.forEach((part, index) => {
+                if (index % 2 === 1) {
+                    // Code block
+                    const codeElement = document.createElement("code");
+                    codeElement.classList.add("code-block");
+                    codeElement.textContent = part;
+                    lastMessage.appendChild(codeElement);
+                } else {
+                    // Regular text
+                    lastMessage.appendChild(document.createTextNode(part));
+                }
+            });
+        } else {
+            // Regular message
+            lastMessage.textContent = text;
+        }
+    }
+    scrollToBottom();
+}
 
         function handleKeyPress(event) {
             if (event.key === "Enter") {
                 sendMessage();
             }
         }
-
+        let isUserScrolling = false;
         function scrollToBottom() {
-            const chatContainer = document.getElementById("chatContainer");
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (!isUserScrolling) {
+                const chatContainer = document.getElementById("chatContainer");
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
         }
     </script>
 
