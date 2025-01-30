@@ -253,6 +253,28 @@
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         }
+        // Detect user scrolling manually
+document.getElementById("chatContainer").addEventListener("scroll", function() {
+    const chatContainer = this;
+    const threshold = 10; // A small threshold to account for minor scroll differences
+
+    // Check if the user is scrolling up
+    if (chatContainer.scrollTop + chatContainer.clientHeight + threshold < chatContainer.scrollHeight) {
+        isUserScrolling = true;
+    } else {
+        // User is at the bottom, re-enable auto-scroll
+        isUserScrolling = false;
+    }
+});
+
+// Reset isUserScrolling when the user stops scrolling
+let scrollTimeout;
+document.getElementById("chatContainer").addEventListener("scroll", function() {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+        isUserScrolling = false;
+    }, 200); // Adjust the timeout duration as needed
+});
     </script>
 
 </body>
