@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import os
-import requests
-
+# from ollama import chat
+import ollama
 # Load environment variables
 load_dotenv()
 
@@ -13,30 +13,23 @@ def home():
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
-def chat():
+def chatFunction():
     try:
         user_message = request.json['message']
+        print('User message:', user_message)
         
-        # Prepare the request to Ollama
-        ollama_url = os.getenv('OLLAMA_API_URL')
         model_name = os.getenv('MODEL_NAME')
+
+        # Get the AI response
+        stream = ollama.chat(
+            model='deepseek-r1:1.5b',
+            messages=[{'role': 'user', 'content': 'Why is the sky blue?'}],
+            stream=True,
+        )
+        for chunk in stream:
+            print(chunk['message']['content'], end='', flush=True)
+        return jsonify({'response': "response"})
         
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "user", "content": user_message}
-            ]
-        }
-        
-        # Make request to Ollama
-        response = requests.post(ollama_url, json=payload)
-        
-        if response.status_code == 200:
-            ai_response = response.json()['message']['content']
-            return jsonify({'response': ai_response})
-        else:
-            return jsonify({'error': 'Failed to get response from Ollama'}), 500
-            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
