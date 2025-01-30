@@ -52,10 +52,10 @@
         #chatInputContainer {
             display: flex;
             padding: 10px;
-            margin: 2px;
             background-color: white;
             position: sticky;
             bottom: 0;
+            width: 100%;
             box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
         }
 
@@ -101,6 +101,22 @@
     <script>
         let isRequestInProgress = false;
 
+        // Load messages from localStorage and render them
+        window.onload = function() {
+            const savedMessages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+            savedMessages.forEach(message => appendMessage(message.text, message.sender));
+        };
+
+        // Save messages to localStorage
+        function saveMessages() {
+            const messages = [];
+            const chatMessages = document.querySelectorAll(".message");
+            chatMessages.forEach(msg => {
+                messages.push({ text: msg.textContent, sender: msg.classList.contains("user") ? "user" : "bot" });
+            });
+            localStorage.setItem("chatMessages", JSON.stringify(messages));
+        }
+
         function sendMessage() {
             if (isRequestInProgress) return;
 
@@ -109,12 +125,15 @@
             const message = messageInput.value.trim();
             if (!message) return;
 
-            isRequestInProgress = true;  // Lock sending
+            isRequestInProgress = true;
             messageInput.disabled = true;
             sendButton.disabled = true;
 
             appendMessage(message, "user");
-            messageInput.value = ""; // Clear input
+            messageInput.value = "";
+
+            // Save user message to localStorage
+            saveMessages();
 
             fetch('/chat', {
                 method: 'POST',
@@ -130,9 +149,10 @@
                 function read() {
                     reader.read().then(({ done, value }) => {
                         if (done) {
-                            isRequestInProgress = false;  // Unlock sending
+                            isRequestInProgress = false;
                             messageInput.disabled = false;
                             sendButton.disabled = false;
+                            saveMessages();
                             return;
                         }
 
