@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from dotenv import load_dotenv
-import os
-# from ollama import chat
 import ollama
+
 # Load environment variables
 load_dotenv()
 
@@ -17,21 +16,23 @@ def chatFunction():
     try:
         user_message = request.json['message']
         print('User message:', user_message)
-        
-        model_name = os.getenv('MODEL_NAME')
 
-        # Get the AI response
-        stream = ollama.chat(
-            model='deepseek-r1:1.5b',
-            messages=[{'role': 'user', 'content': 'Why is the sky blue?'}],
-            stream=True,
-        )
-        for chunk in stream:
-            print(chunk['message']['content'], end='', flush=True)
-        return jsonify({'response': "response"})
-        
+        def generate():
+            """Generate streaming response from Ollama"""
+            stream = ollama.chat(
+                model='deepseek-r1:1.5b',
+                messages=[{'role': 'user', 'content': user_message}],
+                stream=True,
+            )
+            for chunk in stream:
+                response_text = chunk['message']['content'].replace("</think>", "").replace("<think>", "")
+                if 'message' in chunk and 'content' in chunk['message']:
+                    yield f"data: {response_text}\n\n"
+
+        return Response(generate(), mimetype='text/event-stream')
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
