@@ -53,13 +53,14 @@
             background-color: #282c34;
             color: #abb2bf;
             padding: 10px;
-            border-radius: 5px;
+            /* border-radius: 5px; */
             font-family: "Courier New", monospace;
-            white-space: pre-wrap;
+            /* white-space: pre-wrap; */
             overflow-x: auto;
         }
 
         #chatInputContainer {
+            max-height: max-content;
             display: flex;
             padding: 10px;
             background-color: white;
@@ -69,6 +70,7 @@
         }
 
         #userInput {
+            max-height: 4rem;
             flex: 1;
             padding: 10px;
             border: 1px solid #ccc;
@@ -103,7 +105,11 @@
     </div>
 
     <div id="chatInputContainer">
-        <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)" autofocus>
+        <textarea  type="text"
+        id="userInput"
+        placeholder="Type a message..."
+        onkeypress="handleKeyPress(event)"
+        autofocus ></textarea>
         <button id="sendButton" onclick="sendMessage()">Send</button>
     </div>
 
@@ -113,7 +119,10 @@
         // Load messages from localStorage and render them
         window.onload = function() {
             const savedMessages = JSON.parse(localStorage.getItem("chatMessages")) || [];
-            savedMessages.forEach(message => appendMessage(message.text, message.sender));
+            if (savedMessages.length === 0) {
+                appendMessage("Welcome to the chattychatty! Type a message and press Enter to send it.", "bot", true);
+            }
+            savedMessages.forEach(message => appendMessage(message.text, message.sender, true));
         };
 
         // Save messages to localStorage
@@ -135,7 +144,7 @@
             if (!message) return;
 
             isRequestInProgress = true;
-            messageInput.disabled = true;
+            
             sendButton.disabled = true;
 
             appendMessage(message, "user");
@@ -159,7 +168,6 @@
                     reader.read().then(({ done, value }) => {
                         if (done) {
                             isRequestInProgress = false;
-                            messageInput.disabled = false;
                             sendButton.disabled = false;
                             saveMessages();
                             return;
@@ -179,12 +187,11 @@
             .catch(error => {
                 console.error('Error:', error);
                 isRequestInProgress = false;
-                messageInput.disabled = false;
                 sendButton.disabled = false;
             });
         }
 
-        function appendMessage(text, sender) {
+        function appendMessage(text, sender, isLoadedMessage = false) {
             const chatOutput = document.getElementById("chatOutput");
             const messageElement = document.createElement("div");
             messageElement.classList.add("message", sender);
@@ -206,46 +213,60 @@
                 });
             } else {
                 // Regular message
-                messageElement.textContent = text;
+                messageElement.innerHTML = isLoadedMessage ? text : text.replace(/\n/g, '<br>');
             }
 
             chatOutput.appendChild(messageElement);
             scrollToBottom();
         }
 
-        function  updateLastBotMessage(text) {
-    const chatOutput = document.getElementById("chatOutput");
-    const lastMessage = chatOutput.querySelector(".bot:last-child");
-    if (lastMessage) {
-        // Check if the message contains code blocks
-        if (text.includes("```")) {
-            const parts = text.split("```");
-            lastMessage.innerHTML = ""; // Clear existing content
-            parts.forEach((part, index) => {
-                if (index % 2 === 1) {
-                    // Code block
-                    const codeElement = document.createElement("code");
-                    codeElement.classList.add("code-block");
-                    codeElement.textContent = part;
-                    lastMessage.appendChild(codeElement);
+        function updateLastBotMessage(text) {
+            const chatOutput = document.getElementById("chatOutput");
+            const lastMessage = chatOutput.querySelector(".bot:last-child");
+            if (lastMessage) {
+                // Check if the message contains code blocks
+                if (text.includes("```")) {
+                    const parts = text.split("```");
+                    lastMessage.innerHTML = ""; // Clear existing content
+                    parts.forEach((part, index) => {
+                        if (index % 2 === 1) {
+                            // Code block
+                            const codeElement = document.createElement("code");
+                            codeElement.classList.add("code-block");
+                            codeElement.textContent = part;
+                            lastMessage.appendChild(codeElement);
+                        } else {
+                            // Regular text
+                            lastMessage.appendChild(document.createTextNode(part));
+                        }
+                    });
                 } else {
-                    // Regular text
-                    lastMessage.appendChild(document.createTextNode(part));
+                    // Regular message
+                    lastMessage.innerHTML = text.replace(/\n/g, '');
                 }
-            });
-        } else {
-            // Regular message
-            lastMessage.textContent = text;
+            }
+            scrollToBottom();
         }
-    }
-    scrollToBottom();
-}
 
         function handleKeyPress(event) {
-            if (event.key === "Enter") {
-                sendMessage();
-            }
+    if (event.key === "Enter") {
+        if (event.shiftKey) {
+            // Shift + Enter: Insert a newline
+            event.preventDefault(); // Prevent the default behavior (e.g., form submission)
+            const input = document.getElementById("userInput");
+            const cursorPosition = input.selectionStart; // Get the current cursor position
+            const textBeforeCursor = input.value.substring(0, cursorPosition); // Text before the cursor
+            const textAfterCursor = input.value.substring(cursorPosition); // Text after the cursor
+            input.value = textBeforeCursor + "\n" + textAfterCursor; // Insert a newline
+            input.selectionStart = input.selectionEnd = cursorPosition + 1; // Move the cursor after the newline
+        } else {
+            // Enter (without Shift): Send the message
+            event.preventDefault(); // Prevent the default behavior (e.g., form submission)
+            sendMessage();
         }
+    }
+}
+
         let isUserScrolling = false;
         function scrollToBottom() {
             if (!isUserScrolling) {
@@ -253,28 +274,26 @@
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
         }
+
         // Detect user scrolling manually
-document.getElementById("chatContainer").addEventListener("scroll", function() {
-    const chatContainer = this;
-    const threshold = 10; // A small threshold to account for minor scroll differences
+        document.getElementById("chatContainer").addEventListener("scroll", function() {
+            const chatContainer = this;
+            const threshold = 10; 
+            // Check if the user is scrolling up
+            if (chatContainer.scrollTop + chatContainer.clientHeight + threshold < chatContainer.scrollHeight) {
+                isUserScrolling = true;
+            } else {
+                isUserScrolling = false;
+            }
+        });
 
-    // Check if the user is scrolling up
-    if (chatContainer.scrollTop + chatContainer.clientHeight + threshold < chatContainer.scrollHeight) {
-        isUserScrolling = true;
-    } else {
-        // User is at the bottom, re-enable auto-scroll
-        isUserScrolling = false;
-    }
-});
-
-// Reset isUserScrolling when the user stops scrolling
-let scrollTimeout;
-document.getElementById("chatContainer").addEventListener("scroll", function() {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-        isUserScrolling = false;
-    }, 200); // Adjust the timeout duration as needed
-});
+        let scrollTimeout;
+        document.getElementById("chatContainer").addEventListener("scroll", function() {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isUserScrolling = false;
+            }, 200);
+        });
     </script>
 
 </body>

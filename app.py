@@ -26,6 +26,7 @@ def chatFunction():
             )
             for chunk in stream:
                 response_text = chunk['message']['content'].replace("</think>", "").replace("<think>", "")
+                print(response_text)
                 if 'message' in chunk and 'content' in chunk['message']:
                     yield f"data: {response_text}\n\n"
 
